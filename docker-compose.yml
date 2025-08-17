@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  minecraft:
+    build:
+      context: ./minecraft
+      dockerfile: Dockerfile
+    container_name: lesyria_minecraft
+    ports:
+      - "25565:25565"
+    volumes:
+      - minecraft_data:/minecraft
+    environment:
+      MEMORY: 8G
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lesyria_backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    container_name: lesyria_db
+    environment:
+      POSTGRES_USER: kronyx
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: lesyria
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  admin_panel:
+    build:
+      context: ./admin_panel
+      dockerfile: Dockerfile
+    container_name: lesyria_admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  minecraft_data:
+  db_data:
+    
