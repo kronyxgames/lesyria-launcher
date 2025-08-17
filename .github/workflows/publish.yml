@@ -1,0 +1,70 @@
+name: Publish Launcher
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Déclenche la release quand un tag de version est poussé
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React + Electron
+        run: |
+          npm run build     # build React
+          npm run package   # package Electron (assurez-vous d'avoir un script "package" dans package.json)
+
+      - name: Create release assets
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v3
+        with:
+          name: launcher-${{ matrix.os }}
+          path: dist/*  # dossier où Electron-builder sort les fichiers
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: launcher-windows-latest
+          path: ./dist/windows
+      - uses: actions/download-artifact@v3
+        with:
+          name: launcher-macos-latest
+          path: ./dist/macos
+      - uses: actions/download-artifact@v3
+        with:
+          name: launcher-ubuntu-latest
+          path: ./dist/linux
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./dist/windows/*.exe
+            ./dist/macos/*.dmg
+            ./dist/linux/*.AppImage
